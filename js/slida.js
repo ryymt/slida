@@ -24,9 +24,10 @@ class Slida {
         this.settings = { ...defaults, ...options };
 
         this.current = 0;
+        this.prev = 0;
         this.timer = null;
 
-        this.progress = 0; // -1〜1 範囲程度
+        this.progress = 0;
         this.isDragging = false;
         this.startX = 0;
         this.delta = 0;
@@ -70,7 +71,6 @@ class Slida {
             this.track.appendChild(clone);
         });
     }
-
     createDots() {
         const dotsWrapper = document.createElement('div');
         dotsWrapper.classList.add('slida_dots');
@@ -137,23 +137,41 @@ class Slida {
     }
 
     nextSlide() {
+        this.prev = this.current;
         this.current = (this.current + 1) % this.originalSlides.length;
-        this.updateActiveSlide();
+        this.updateActiveSlide(true);
     }
 
     prevSlide() {
+        this.prev = this.current;
         this.current =
             (this.current - 1 + this.originalSlides.length) %
             this.originalSlides.length;
-        this.updateActiveSlide();
+        this.updateActiveSlide(true);
     }
 
     goToSlide(index) {
+        this.prev = this.current;
         this.current = index;
-        this.updateActiveSlide();
+        this.updateActiveSlide(true);
     }
 
-    updateActiveSlide() {
+    updateActiveSlide(withTransition = false) {
+        const isLoopBack =
+            this.prev === this.originalSlides.length - 1 && this.current === 0;
+
+        if (isLoopBack && withTransition) {
+            this.track.classList.remove('is-animating');
+            this.track.style.transition = 'none'; // アニメーションOFF
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.track.classList.add('is-animating');
+                    this.track.style.transition = ''; // アニメーションON
+                });
+            });
+        }
+
         this.originalSlides.forEach((slide, index) => {
             slide.classList.toggle('is-active', index === this.current);
         });
@@ -167,9 +185,9 @@ class Slida {
         });
     }
 
-    // -------------------------------
-    //  ドラッグ・フリック進捗管理
-    // -------------------------------
+    // ---------------------------------
+    // ドラッグ / フリック
+    // ---------------------------------
     bindDragEvents() {
         this.container.addEventListener('mousedown', this.onStart.bind(this));
         this.container.addEventListener('touchstart', this.onStart.bind(this), {
@@ -194,7 +212,6 @@ class Slida {
 
     onMove(e) {
         if (!this.isDragging) return;
-
         e.preventDefault();
 
         const x = this.getX(e);
@@ -216,12 +233,13 @@ class Slida {
 
         this.progress = 0;
         this.container.style.setProperty('--progress', 0);
-
         this.restartTimer();
     }
+
     getX(e) {
         return e.touches ? e.touches[0].clientX : e.clientX;
     }
+
     disableImageDrag() {
         this.container.querySelectorAll('img').forEach((img) => {
             img.addEventListener('dragstart', (e) => e.preventDefault());
@@ -230,7 +248,7 @@ class Slida {
 }
 
 // --------------------------------
-//  Example Usage
+// Example
 // --------------------------------
 const slidael = document.querySelector('.slida');
 new Slida(slidael, {

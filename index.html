@@ -6,11 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slida</title>
     <style>
-        .slida_slide{
+        .slida--no-animate .slida_track,
+        .slida--no-animate .slida_slide {
+            transition: none !important;
+        }
+
+        .slida_slide {
             width: 100px;
-            img{
+            &.is-active {
+                outline:3px solid red;
+            }
+            img {
+                display: block;
                 width: 100%;
                 height: auto;
+            }
+        }
+
+        .slida_dot {
+            &.is-active {
+                background-color: red;
             }
         }
     </style>
