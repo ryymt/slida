@@ -1,6 +1,16 @@
 class Slida {
     constructor(selector, options = {}) {
-        this.container = document.querySelector(selector);
+        // selectorが文字列ならquerySelector、要素ならそのまま
+        this.container =
+            typeof selector === 'string'
+                ? document.querySelector(selector)
+                : selector;
+
+        if (!this.container) {
+            console.error('Slida: container element not found');
+            return;
+        }
+
         this.track = this.container.querySelector('.slida_track');
         this.originalSlides = Array.from(
             this.track.querySelectorAll('.slida_slide')
@@ -151,9 +161,9 @@ class Slida {
     }
 }
 
-// --- 実行例 ---
-new Slida('.slida', {
-    interval: 5000,
+const slidael = document.querySelector('.slida');
+new Slida(slidael, {
+    interval: 1000,
     arrows: true,
     dots: true,
 });
