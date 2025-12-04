@@ -1,11 +1,30 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slida</title>
+    <style>
+        .slida_slide{
+            width: 100px;
+            img{
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
 </head>
-<body>
 
+<body>
+    <div class="slida">
+        <div class="slida_track">
+            <div class="slida_slide"><img src="./img/pho_dummy_3.jpg" alt="" width="600" height="480"></div>
+            <div class="slida_slide"><img src="./img/pho_dummy_3.jpg" alt="" width="600" height="480"></div>
+            <div class="slida_slide"><img src="./img/pho_dummy_3.jpg" alt="" width="600" height="480"></div>
+        </div>
+    </div>
+    <script src="./js/slida.js"></script>
 </body>
+
 </html>
