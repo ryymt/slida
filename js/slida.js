@@ -1,6 +1,5 @@
 class Slida {
     constructor(selector, options = {}) {
-        // selectorが文字列ならquerySelector、要素ならそのまま
         this.container =
             typeof selector === 'string'
                 ? document.querySelector(selector)
@@ -27,12 +26,20 @@ class Slida {
         this.current = 0;
         this.timer = null;
 
+        this.progress = 0; // -1〜1 範囲程度
+        this.isDragging = false;
+        this.startX = 0;
+        this.delta = 0;
+        this.width = this.container.clientWidth;
+
         this.addSlideIndex();
         this.cloneSlides();
 
         if (this.settings.arrows) this.createArrows();
         if (this.settings.dots) this.createDots();
 
+        this.disableImageDrag();
+        this.bindDragEvents();
         this.start();
     }
 
@@ -159,8 +166,72 @@ class Slida {
             dot.classList.toggle('is-active', index === this.current);
         });
     }
+
+    // -------------------------------
+    //  ドラッグ・フリック進捗管理
+    // -------------------------------
+    bindDragEvents() {
+        this.container.addEventListener('mousedown', this.onStart.bind(this));
+        this.container.addEventListener('touchstart', this.onStart.bind(this), {
+            passive: true,
+        });
+
+        window.addEventListener('mousemove', this.onMove.bind(this));
+        window.addEventListener('touchmove', this.onMove.bind(this), {
+            passive: false,
+        });
+
+        window.addEventListener('mouseup', this.onEnd.bind(this));
+        window.addEventListener('touchend', this.onEnd.bind(this));
+    }
+
+    onStart(e) {
+        this.isDragging = true;
+        this.startX = this.getX(e);
+        this.delta = 0;
+        clearInterval(this.timer);
+    }
+
+    onMove(e) {
+        if (!this.isDragging) return;
+
+        e.preventDefault();
+
+        const x = this.getX(e);
+        this.delta = x - this.startX;
+        this.progress = this.delta / this.width;
+
+        this.container.style.setProperty('--progress', this.progress);
+    }
+
+    onEnd() {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+
+        if (this.progress > 0.2) {
+            this.prevSlide();
+        } else if (this.progress < -0.2) {
+            this.nextSlide();
+        }
+
+        this.progress = 0;
+        this.container.style.setProperty('--progress', 0);
+
+        this.restartTimer();
+    }
+    getX(e) {
+        return e.touches ? e.touches[0].clientX : e.clientX;
+    }
+    disableImageDrag() {
+        this.container.querySelectorAll('img').forEach((img) => {
+            img.addEventListener('dragstart', (e) => e.preventDefault());
+        });
+    }
 }
 
+// --------------------------------
+//  Example Usage
+// --------------------------------
 const slidael = document.querySelector('.slida');
 new Slida(slidael, {
     interval: 1000,
