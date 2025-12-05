@@ -181,7 +181,7 @@ class Slida {
 
     updateActiveDots() {
         this.dots.forEach((dot, index) => {
-            dot.classList.toggle('is-active', index === this.current);
+            dot.classList.toggle('is-current', index === this.current);
         });
     }
 
