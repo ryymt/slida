@@ -24,16 +24,19 @@ class Slida {
         this.settings = { ...defaults, ...options };
 
         this.current = 0;
+        this.trackMoveAmount = 0;
+        this.trackProgress = this.current;
         this.prev = 0;
         this.timer = null;
+        this.track.dataset.trackProgress = this.current;
 
         // クローン表示中かどうかのフラグ
         this.isCloneActive = false;
 
-        this.progress = 0;
+        this.dragAmount = 0;
         this.isDragging = false;
         this.startX = 0;
-        this.delta = 0;
+        this.dragDiff = 0;
         this.width = this.container.clientWidth;
 
         this.addSlideIndex();
@@ -43,7 +46,8 @@ class Slida {
         if (this.settings.dots) this.createDots();
 
         this.disableImageDrag();
-        this.start();
+        this.bindDragEvents();
+        this.init();
     }
 
     addSlideIndex() {
@@ -125,7 +129,7 @@ class Slida {
         });
     }
 
-    start() {
+    init() {
         this.updateActiveSlide();
         this.timer = setInterval(
             () => this.nextSlide(),
@@ -144,26 +148,23 @@ class Slida {
     nextSlide() {
         this.prev = this.current;
 
-        // ★変更: 最後のスライドにいる場合
+        // 最後のスライドにいる場合
         if (this.current === this.originalSlides.length - 1) {
-
-            // 1. まずクローン（最初のスライドのコピー）へアニメーション移動させる
+            // クローン（最初のスライドのコピー）へ移動
             this.isCloneActive = true;
-            this.current = 0; // 論理位置は0に戻す
-            this.updateActiveSlide(true); // アニメーションありで更新
+            this.current = 0;
+            this.track.dataset.trackProgress = this.current;
 
-            // 2. CSSアニメーションが終わったタイミングで、即座に本物のスライド0へ差し替える
+            this.updateActiveSlide(true);
+
+            // CSSアニメーションが終わったら即座に本物のスライド0へ差し替える
             const onTransitionEnd = () => {
-                // クローンモード解除
                 this.isCloneActive = false;
 
-                // アニメーション（Transition）を一時的に無効化
                 this.track.style.transition = 'none';
 
-                // 本物のスライド0を表示状態にする（見た目は変わらない）
                 this.updateActiveSlide(false);
 
-                // 少し待ってからTransition設定を元に戻す（次の移動のため）
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         this.track.style.transition = '';
@@ -181,6 +182,7 @@ class Slida {
 
         // 通常動作
         this.current = (this.current + 1) % this.originalSlides.length;
+        this.track.dataset.trackProgress = this.current;
         this.updateActiveSlide(true);
     }
 
@@ -190,6 +192,7 @@ class Slida {
         this.current =
             (this.current - 1 + this.originalSlides.length) %
             this.originalSlides.length;
+        this.track.dataset.trackProgress = this.current;
         this.updateActiveSlide(true);
     }
 
@@ -215,16 +218,15 @@ class Slida {
             );
         });
 
-        // ★変更: アクティブにする要素の特定
+        //アクティブにする要素の特定
         let active;
 
         if (this.isCloneActive) {
-            // クローンモード時は、最後のオリジナルスライドの「次（＝最初のクローン）」を取得
+            // クローンモード時は、最後のスライドの次（最初のクローン）を取得
             const lastOriginal =
                 this.originalSlides[this.originalSlides.length - 1];
             active = lastOriginal.nextElementSibling;
         } else {
-            // 通常時は、現在のインデックスに対応するオリジナルスライドを取得
             active = this.track.querySelector(
                 `.slida_slide[data-slide-index="${this.current}"]:not(.slida_slide--clone)`
             );
@@ -253,50 +255,62 @@ class Slida {
     // ドラッグ / フリック
     // ---------------------------------
     bindDragEvents() {
-        this.container.addEventListener('mousedown', this.onStart.bind(this));
-        this.container.addEventListener('touchstart', this.onStart.bind(this), {
-            passive: true,
-        });
+        this.container.addEventListener(
+            'mousedown',
+            this.onDragStart.bind(this)
+        );
+        this.container.addEventListener(
+            'touchstart',
+            this.onDragStart.bind(this),
+            {
+                passive: true,
+            }
+        );
 
-        window.addEventListener('mousemove', this.onMove.bind(this));
-        window.addEventListener('touchmove', this.onMove.bind(this), {
+        window.addEventListener('mousemove', this.onDragMove.bind(this));
+        window.addEventListener('touchmove', this.onDragMove.bind(this), {
             passive: false,
         });
 
-        window.addEventListener('mouseup', this.onEnd.bind(this));
-        window.addEventListener('touchend', this.onEnd.bind(this));
+        window.addEventListener('mouseup', this.onDragEnd.bind(this));
+        window.addEventListener('touchend', this.onDragEnd.bind(this));
     }
 
-    onStart(e) {
+    onDragStart(e) {
         this.isDragging = true;
         this.startX = this.getX(e);
-        this.delta = 0;
+        this.dragDiff = 0;
+        this.trackMoveAmount = 0;
         clearInterval(this.timer);
     }
 
-    onMove(e) {
+    onDragMove(e) {
         if (!this.isDragging) return;
         e.preventDefault();
 
         const x = this.getX(e);
-        this.delta = x - this.startX;
-        this.progress = this.delta / this.width;
-
-        this.container.style.setProperty('--progress', this.progress);
+        this.dragDiff = x - this.startX;
+        this.dragAmount = this.dragDiff / this.width;
+        // ドラッグで動かした量をtrackに伝える
+        this.trackMoveAmount =
+            this.trackMoveAmount + this.dragAmount / this.originalSlides.length;
+        this.track.dataset.trackProgress = this.current - this.trackMoveAmount;
     }
 
-    onEnd() {
+    onDragEnd() {
         if (!this.isDragging) return;
         this.isDragging = false;
 
-        if (this.progress > 0.2) {
+        if (this.dragAmount > 0.2) {
             this.prevSlide();
-        } else if (this.progress < -0.2) {
+        } else if (this.dragAmount < -0.2) {
             this.nextSlide();
+        } else {
+            this.track.dataset.trackProgress = this.current;
         }
 
-        this.progress = 0;
-        this.container.style.setProperty('--progress', 0);
+        this.dragAmount = 0;
+        // this.container.style.setProperty('--drag-progress', 0);
         this.restartTimer();
     }
 

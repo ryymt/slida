@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slida</title>
     <style>
-        .slida--no-animate .slida_track,
-        .slida--no-animate .slida_slide {
-            transition: none !important;
+        .slida_track{
+            display: flex;
+            justify-content: start;
         }
 
         .slida_slide {
-            width: 100px;
+            width: 200px;
             outline: 1px solid transparent;
             transition: outline 0.2s ease;
             &.is-active {
@@ -50,7 +50,7 @@
         // --------------------------------
         const slidael = document.querySelector('.slida');
         new Slida(slidael, {
-            interval: 1000,
+            interval: 5000,
             arrows: true,
             dots: true,
         });
