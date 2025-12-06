@@ -13,9 +13,12 @@
 
         .slida_slide {
             width: 100px;
+            outline: 1px solid transparent;
+            transition: outline 0.2s ease;
             &.is-active {
-                outline:3px solid red;
+                outline: 3px solid red;
             }
+
             img {
                 display: block;
                 width: 100%;
@@ -24,7 +27,7 @@
         }
 
         .slida_dot {
-            &.is-active {
+            &.is-current {
                 background-color: red;
             }
         }
@@ -40,6 +43,19 @@
         </div>
     </div>
     <script src="./js/slida.js"></script>
+    <script>
+
+        // --------------------------------
+        // Example
+        // --------------------------------
+        const slidael = document.querySelector('.slida');
+        new Slida(slidael, {
+            interval: 1000,
+            arrows: true,
+            dots: true,
+        });
+
+    </script>
 </body>
 
 </html>

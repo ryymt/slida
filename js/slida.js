@@ -27,6 +27,9 @@ class Slida {
         this.prev = 0;
         this.timer = null;
 
+        // クローン表示中かどうかのフラグ
+        this.isCloneActive = false;
+
         this.progress = 0;
         this.isDragging = false;
         this.startX = 0;
@@ -40,7 +43,6 @@ class Slida {
         if (this.settings.dots) this.createDots();
 
         this.disableImageDrag();
-        this.bindDragEvents();
         this.start();
     }
 
@@ -71,6 +73,7 @@ class Slida {
             this.track.appendChild(clone);
         });
     }
+
     createDots() {
         const dotsWrapper = document.createElement('div');
         dotsWrapper.classList.add('slida_dots');
@@ -79,7 +82,9 @@ class Slida {
             const button = document.createElement('button');
             button.classList.add('slida_dot');
             button.dataset.dotIndex = index;
-            button.textContent = index + 1;
+            button.innerHTML = `<span class="slida_dot_text">${
+                index + 1
+            }</span>`;
             dotsWrapper.appendChild(button);
 
             button.addEventListener('click', () => {
@@ -138,11 +143,49 @@ class Slida {
 
     nextSlide() {
         this.prev = this.current;
+
+        // ★変更: 最後のスライドにいる場合
+        if (this.current === this.originalSlides.length - 1) {
+
+            // 1. まずクローン（最初のスライドのコピー）へアニメーション移動させる
+            this.isCloneActive = true;
+            this.current = 0; // 論理位置は0に戻す
+            this.updateActiveSlide(true); // アニメーションありで更新
+
+            // 2. CSSアニメーションが終わったタイミングで、即座に本物のスライド0へ差し替える
+            const onTransitionEnd = () => {
+                // クローンモード解除
+                this.isCloneActive = false;
+
+                // アニメーション（Transition）を一時的に無効化
+                this.track.style.transition = 'none';
+
+                // 本物のスライド0を表示状態にする（見た目は変わらない）
+                this.updateActiveSlide(false);
+
+                // 少し待ってからTransition設定を元に戻す（次の移動のため）
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        this.track.style.transition = '';
+                    });
+                });
+            };
+
+            // transitionendイベントで上記処理を一度だけ実行
+            this.track.addEventListener('transitionend', onTransitionEnd, {
+                once: true,
+            });
+
+            return;
+        }
+
+        // 通常動作
         this.current = (this.current + 1) % this.originalSlides.length;
         this.updateActiveSlide(true);
     }
 
     prevSlide() {
+        this.isCloneActive = false; // 手動操作時はクローンモード解除
         this.prev = this.current;
         this.current =
             (this.current - 1 + this.originalSlides.length) %
@@ -151,30 +194,51 @@ class Slida {
     }
 
     goToSlide(index) {
+        this.isCloneActive = false; // 手動操作時はクローンモード解除
         this.prev = this.current;
         this.current = index;
         this.updateActiveSlide(true);
     }
 
     updateActiveSlide(withTransition = false) {
-        const isLoopBack =
-            this.prev === this.originalSlides.length - 1 && this.current === 0;
+        const allSlides = Array.from(
+            this.track.querySelectorAll('.slida_slide')
+        );
 
-        if (isLoopBack && withTransition) {
-            this.track.classList.remove('is-animating');
-            this.track.style.transition = 'none'; // アニメーションOFF
+        // すべての状態クラスを削除
+        allSlides.forEach((slide) => {
+            slide.classList.remove(
+                'is-active',
+                'is-prev',
+                'is-next',
+                'is-visible'
+            );
+        });
 
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    this.track.classList.add('is-animating');
-                    this.track.style.transition = ''; // アニメーションON
-                });
-            });
+        // ★変更: アクティブにする要素の特定
+        let active;
+
+        if (this.isCloneActive) {
+            // クローンモード時は、最後のオリジナルスライドの「次（＝最初のクローン）」を取得
+            const lastOriginal =
+                this.originalSlides[this.originalSlides.length - 1];
+            active = lastOriginal.nextElementSibling;
+        } else {
+            // 通常時は、現在のインデックスに対応するオリジナルスライドを取得
+            active = this.track.querySelector(
+                `.slida_slide[data-slide-index="${this.current}"]:not(.slida_slide--clone)`
+            );
         }
 
-        this.originalSlides.forEach((slide, index) => {
-            slide.classList.toggle('is-active', index === this.current);
-        });
+        if (!active) return;
+
+        active.classList.add('is-active', 'is-visible');
+
+        const prev = active.previousElementSibling;
+        const next = active.nextElementSibling;
+
+        if (prev) prev.classList.add('is-prev', 'is-visible');
+        if (next) next.classList.add('is-next', 'is-visible');
 
         if (this.settings.dots) this.updateActiveDots();
     }
@@ -247,12 +311,4 @@ class Slida {
     }
 }
 
-// --------------------------------
-// Example
-// --------------------------------
-const slidael = document.querySelector('.slida');
-new Slida(slidael, {
-    interval: 1000,
-    arrows: true,
-    dots: true,
-});
+// export default Slida;
