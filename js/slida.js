@@ -36,7 +36,7 @@ class Slida {
         this.dragAmount = 0;
         this.isDragging = false;
         this.startX = 0;
-        this.dragDiff = 0;
+        this.dragPixel = 0;
         this.width = this.container.clientWidth;
 
         this.addSlideIndex();
@@ -279,7 +279,7 @@ class Slida {
     onDragStart(e) {
         this.isDragging = true;
         this.startX = this.getX(e);
-        this.dragDiff = 0;
+        this.dragPixel = 0;
         this.trackMoveAmount = 0;
         clearInterval(this.timer);
     }
@@ -289,8 +289,9 @@ class Slida {
         e.preventDefault();
 
         const x = this.getX(e);
-        this.dragDiff = x - this.startX;
-        this.dragAmount = this.dragDiff / this.width;
+        this.dragPixel = x - this.startX;
+        this.dragAmount = this.dragPixel / this.width;
+
         // ドラッグで動かした量をtrackに伝える
         this.trackMoveAmount =
             this.trackMoveAmount + this.dragAmount / this.originalSlides.length;
